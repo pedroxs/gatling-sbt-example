@@ -10,11 +10,15 @@ import scala.concurrent.duration._
   */
 class CalculateSimulation extends Simulation {
 
-   object Calculate {
-     val calculate = exec(http("Calculate")
+  val feeder = csv("calculate.csv").random
+
+  object Calculate {
+     val calculate = feed(feeder)
+       .exec(http("Calculate")
        .get("/shipping/search/calculate")
-       .queryParamMap(Map("zip" -> "1406", "weight" -> "10"))
-       .check(status.is(200)))
+       .queryParamMap(Map("zip" -> "${zip}", "weight" -> "${weight}"))
+       .check(status.is(200))
+       .check(jsonPath("$.._embedded.shippings[0].shippingCost").is("${cost}")))
    }
 
    val httpConf = http
@@ -26,6 +30,6 @@ class CalculateSimulation extends Simulation {
    val users = scenario("Users").exec(Calculate.calculate)
 
    setUp(
-     users.inject(rampUsers(50) over (10 seconds))
+     users.inject(rampUsers(2) over (10 seconds))
    ).protocols(httpConf)
  }
