@@ -21,16 +21,16 @@ class DroolsJarConsumerSimulation extends Simulation {
   }
 
   object SwitchVersion {
-    val version1 = exec(http("Switch to Version 1")
-      .get("/rule").queryParam("version", "1")
-      .check(status.is(200)))
+    val feeder = (1 to 10000).map(i => Map("number" -> i))
 
-    val version2 = exec(http("Switch to Version 2")
-      .get("/rule").queryParam("version", "2")
-      .check(status.is(200)))
+    val nextVersion = feed(feeder)
+      .exec(http("Next Version #${number}")
+        .get("/rule").queryParam("version", "${number}")
+        .check(status.is(200)))
   }
 
-  private val host = "172.17.0.100"
+
+  private val host = System.getProperty("hostUrl", "localhost")
 
   val httpConf = http
     .baseURL("http://" + host + ":8080")
@@ -38,13 +38,21 @@ class DroolsJarConsumerSimulation extends Simulation {
     .disableCaching
 
   val users = scenario("Users").exec(Message.message)
-  val v1 = scenario("Admin V1").exec(SwitchVersion.version1)
-  val v2 = scenario("Admin V2").exec(SwitchVersion.version2)
+  val admin = scenario("Admin").exec(SwitchVersion.nextVersion)
+
+  val rampUser = Integer.getInteger("users", 1)
+  val rampAdmin = Integer.getInteger("admins", 1)
+  val timeDuration = Integer.getInteger("duration", 1)
+  val timeUnit = System.getProperty("time", "seconds") match {
+    case "seconds" => DurationInteger(timeDuration).seconds
+    case "minutes" => DurationInteger(timeDuration).minutes
+    case "hours" => DurationInteger(timeDuration).hours
+    case _ => DurationInteger(timeDuration).seconds
+  }
 
   setUp(
-    users.inject(rampUsers(5000) over (5 minutes)),
-    v1.inject(atOnceUsers(1)),
-    v2.inject(nothingFor(60 seconds), atOnceUsers(1))
+    users.inject(rampUsers(rampUser) over timeUnit),
+    admin.inject(rampUsers(rampAdmin) over timeUnit)
   ).protocols(httpConf)
 
 }
