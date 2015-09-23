@@ -31,9 +31,10 @@ class DroolsJarConsumerSimulation extends Simulation {
 
 
   private val host = System.getProperty("hostUrl", "localhost")
+  private val port = System.getProperty("hostPort", "8080")
 
   val httpConf = http
-    .baseURL("http://" + host + ":8080")
+    .baseURL("http://" + host + ":" + port)
     .acceptHeader("*/*")
     .disableCaching
 
